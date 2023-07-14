@@ -14,6 +14,7 @@
 #include "qemu/osdep.h"
 #include "qemu/units.h"
 #include "qemu/iov.h"
+#include "standard-headers/linux/virtio_gpu.h"
 #include "ui/console.h"
 #include "trace.h"
 #include "sysemu/dma.h"
@@ -342,6 +343,7 @@ static void virtio_gpu_resource_create_blob(VirtIOGPU *g,
     }
 
     if (cblob.blob_mem != VIRTIO_GPU_BLOB_MEM_GUEST &&
+        cblob.blob_mem != VIRTIO_GPU_BLOB_MEM_PRIME &&
         cblob.blob_flags != VIRTIO_GPU_BLOB_FLAG_USE_SHAREABLE) {
         qemu_log_mask(LOG_GUEST_ERROR, "%s: invalid memory type\n",
                       __func__);
