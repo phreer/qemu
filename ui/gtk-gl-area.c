@@ -49,6 +49,7 @@ void gd_gl_area_draw(VirtualConsole *vc)
         return;
     }
 
+    printf("scale: %lf\n", vc->gfx.scale_x);
     gtk_gl_area_make_current(GTK_GL_AREA(vc->gfx.drawing_area));
     ws = gdk_window_get_scale_factor(gtk_widget_get_window(vc->gfx.drawing_area));
     ww = gtk_widget_get_allocated_width(vc->gfx.drawing_area) * ws;

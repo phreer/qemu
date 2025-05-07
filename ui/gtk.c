@@ -281,6 +281,7 @@ static void gd_update_geometry_hints(VirtualConsole *vc)
         geo.min_height = surface_height(vc->gfx.ds) * scale_y;
         mask |= GDK_HINT_MIN_SIZE;
         geo_widget = vc->gfx.drawing_area;
+        printf("hint: w=%d,h=%d\n", geo.min_width, geo.min_height);
         gtk_widget_set_size_request(geo_widget, geo.min_width, geo.min_height);
 
 #if defined(CONFIG_VTE)
@@ -775,6 +776,8 @@ static void gd_resize_event(GtkGLArea *area,
     gd_set_ui_size(vc,
                    width / vc->gfx.requested_scale_x / ws,
                    height / vc->gfx.requested_scale_y / ws);
+
+    printf("resize event set ui size w=%d,h=%d\n", (int) (width / vc->gfx.scale_x / 2), (int) (height / vc->gfx.scale_y / 2));
 }
 
 #endif
@@ -1767,6 +1770,9 @@ static gboolean gd_configure(GtkWidget *widget,
     gd_set_ui_size(vc,
                    cfg->width / vc->gfx.requested_scale_x / ws,
                    cfg->height / vc->gfx.requested_scale_y / ws);
+
+    printf("configure event set ui size w=%d,h=%d\n", (int) (cfg->width / vc->gfx.scale_x / 2), (int) (cfg->height / vc->gfx.scale_y / 2));
+
     return FALSE;
 }
 
