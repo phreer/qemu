@@ -42,6 +42,8 @@ typedef struct VirtualGfxConsole {
     pixman_image_t *convert;
     cairo_surface_t *surface;
     double preferred_scale;
+    double requested_scale_x;
+    double requested_scale_y;
     double scale_x;
     double scale_y;
 #if defined(CONFIG_OPENGL)

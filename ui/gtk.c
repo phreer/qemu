@@ -67,6 +67,7 @@
 #define VC_TERM_X_MIN     80
 #define VC_TERM_Y_MIN     25
 #define VC_SCALE_MIN    0.25
+#define VC_SCALE_MAX       4
 #define VC_SCALE_STEP   0.25
 
 #ifdef GDK_WINDOWING_X11
@@ -272,15 +273,13 @@ static void gd_update_geometry_hints(VirtualConsole *vc)
         if (!vc->gfx.ds) {
             return;
         }
-        if (s->free_scale) {
-            geo.min_width  = surface_width(vc->gfx.ds) * VC_SCALE_MIN;
-            geo.min_height = surface_height(vc->gfx.ds) * VC_SCALE_MIN;
-            mask |= GDK_HINT_MIN_SIZE;
-        } else {
-            geo.min_width  = surface_width(vc->gfx.ds) * vc->gfx.scale_x;
-            geo.min_height = surface_height(vc->gfx.ds) * vc->gfx.scale_y;
-            mask |= GDK_HINT_MIN_SIZE;
-        }
+        double scale_x = s->free_scale ?
+            VC_SCALE_MIN : vc->gfx.requested_scale_x;
+        double scale_y = s->free_scale ?
+            VC_SCALE_MIN : vc->gfx.requested_scale_y;
+        geo.min_width  = surface_width(vc->gfx.ds) * scale_x;
+        geo.min_height = surface_height(vc->gfx.ds) * scale_y;
+        mask |= GDK_HINT_MIN_SIZE;
         geo_widget = vc->gfx.drawing_area;
         gtk_widget_set_size_request(geo_widget, geo.min_width, geo.min_height);
 
@@ -408,14 +407,14 @@ static void gd_update(DisplayChangeListener *dcl,
                                x, y, 0, 0, x, y, w, h);
     }
 
-    x1 = floor(x * vc->gfx.scale_x);
-    y1 = floor(y * vc->gfx.scale_y);
+    x1 = floor(x * vc->gfx.requested_scale_x);
+    y1 = floor(y * vc->gfx.requested_scale_y);
 
-    x2 = ceil(x * vc->gfx.scale_x + w * vc->gfx.scale_x);
-    y2 = ceil(y * vc->gfx.scale_y + h * vc->gfx.scale_y);
+    x2 = ceil(x * vc->gfx.requested_scale_x + w * vc->gfx.requested_scale_x);
+    y2 = ceil(y * vc->gfx.requested_scale_y + h * vc->gfx.requested_scale_y);
 
-    fbw = surface_width(vc->gfx.ds) * vc->gfx.scale_x;
-    fbh = surface_height(vc->gfx.ds) * vc->gfx.scale_y;
+    fbw = surface_width(vc->gfx.ds) * vc->gfx.requested_scale_x;
+    fbh = surface_height(vc->gfx.ds) * vc->gfx.requested_scale_y;
 
     win = gtk_widget_get_window(vc->gfx.drawing_area);
     if (!win) {
@@ -1486,8 +1485,8 @@ static void gd_menu_full_screen(GtkMenuItem *item, void *opaque)
         }
         s->full_screen = FALSE;
         if (vc->type == GD_VC_GFX) {
-            vc->gfx.scale_x = 1.0;
-            vc->gfx.scale_y = 1.0;
+            vc->gfx.requested_scale_x = vc->gfx.preferred_scale;
+            vc->gfx.requested_scale_y = vc->gfx.preferred_scale;
             gd_update_windowsize(vc);
         }
     }
@@ -1509,8 +1508,8 @@ static void gd_menu_zoom_in(GtkMenuItem *item, void *opaque)
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(s->zoom_fit_item),
                                    FALSE);
 
-    vc->gfx.scale_x += VC_SCALE_STEP;
-    vc->gfx.scale_y += VC_SCALE_STEP;
+    vc->gfx.requested_scale_x += VC_SCALE_STEP;
+    vc->gfx.requested_scale_y += VC_SCALE_STEP;
 
     gd_update_windowsize(vc);
 }
@@ -1529,11 +1528,11 @@ static void gd_menu_zoom_out(GtkMenuItem *item, void *opaque)
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(s->zoom_fit_item),
                                    FALSE);
 
-    vc->gfx.scale_x -= VC_SCALE_STEP;
-    vc->gfx.scale_y -= VC_SCALE_STEP;
+    vc->gfx.requested_scale_x -= VC_SCALE_STEP;
+    vc->gfx.requested_scale_y -= VC_SCALE_STEP;
 
-    vc->gfx.scale_x = MAX(vc->gfx.scale_x, VC_SCALE_MIN);
-    vc->gfx.scale_y = MAX(vc->gfx.scale_y, VC_SCALE_MIN);
+    vc->gfx.requested_scale_x = MAX(vc->gfx.requested_scale_x, VC_SCALE_MIN);
+    vc->gfx.requested_scale_y = MAX(vc->gfx.requested_scale_y, VC_SCALE_MIN);
 
     gd_update_windowsize(vc);
 }
@@ -1543,8 +1542,8 @@ static void gd_menu_zoom_fixed(GtkMenuItem *item, void *opaque)
     GtkDisplayState *s = opaque;
     VirtualConsole *vc = gd_vc_find_current(s);
 
-    vc->gfx.scale_x = vc->gfx.preferred_scale;
-    vc->gfx.scale_y = vc->gfx.preferred_scale;
+    vc->gfx.requested_scale_x = vc->gfx.preferred_scale;
+    vc->gfx.requested_scale_y = vc->gfx.preferred_scale;
 
     gd_update_windowsize(vc);
 }
@@ -1558,8 +1557,8 @@ static void gd_menu_zoom_fit(GtkMenuItem *item, void *opaque)
         s->free_scale = TRUE;
     } else {
         s->free_scale = FALSE;
-        vc->gfx.scale_x = 1.0;
-        vc->gfx.scale_y = 1.0;
+        vc->gfx.requested_scale_x = vc->gfx.preferred_scale;
+        vc->gfx.requested_scale_y = vc->gfx.preferred_scale;
     }
 
     gd_update_windowsize(vc);
@@ -2142,6 +2141,11 @@ static void gl_area_realize(GtkGLArea *area, VirtualConsole *vc)
 }
 #endif
 
+static bool gd_scale_valid(double scale)
+{
+    return scale >= VC_SCALE_MIN && scale <= VC_SCALE_MAX;
+}
+
 static GSList *gd_vc_gfx_init(GtkDisplayState *s, VirtualConsole *vc,
                               QemuConsole *con, int idx,
                               GSList *group, GtkWidget *view_menu)
@@ -2152,8 +2156,19 @@ static GSList *gd_vc_gfx_init(GtkDisplayState *s, VirtualConsole *vc,
     vc->label = qemu_console_get_label(con);
     vc->s = s;
     vc->gfx.preferred_scale = 1.0;
-    vc->gfx.scale_x = 1.0;
-    vc->gfx.scale_y = 1.0;
+    if (s->opts->u.gtk.has_scale) {
+        if (gd_scale_valid(s->opts->u.gtk.scale)) {
+            vc->gfx.preferred_scale = s->opts->u.gtk.scale;
+        } else {
+            error_report("Invalid scale value %lf given, being ignored",
+                         s->opts->u.gtk.scale);
+            s->opts->u.gtk.has_scale = false;
+        }
+    }
+    vc->gfx.scale_x = vc->gfx.preferred_scale;
+    vc->gfx.scale_y = vc->gfx.preferred_scale;
+    vc->gfx.requested_scale_x = vc->gfx.preferred_scale;
+    vc->gfx.requested_scale_y = vc->gfx.preferred_scale;
 
 #if defined(CONFIG_OPENGL)
     if (display_opengl) {
@@ -2224,7 +2239,12 @@ static GSList *gd_vc_gfx_init(GtkDisplayState *s, VirtualConsole *vc,
     if (dpy_ui_info_supported(vc->gfx.dcl.con)) {
         zoom_to_fit = true;
     }
-    if (s->opts->u.gtk.has_zoom_to_fit) {
+    if (s->opts->u.gtk.has_scale) {
+        zoom_to_fit = false;
+        if (s->opts->u.gtk.has_zoom_to_fit && s->opts->u.gtk.zoom_to_fit) {
+            error_report("zoom-to-fit is set to false as scale is set");
+        }
+    } else if (s->opts->u.gtk.has_zoom_to_fit) {
         zoom_to_fit = s->opts->u.gtk.zoom_to_fit;
     }
     if (zoom_to_fit) {
