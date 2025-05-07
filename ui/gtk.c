@@ -770,8 +770,11 @@ static void gd_resize_event(GtkGLArea *area,
                             gint width, gint height, gpointer *opaque)
 {
     VirtualConsole *vc = (void *)opaque;
-
-    gd_set_ui_size(vc, width, height);
+    GdkWindow *window = gtk_widget_get_window(vc->gfx.drawing_area);
+    int ws = gdk_window_get_scale_factor(window);
+    gd_set_ui_size(vc,
+                   width / vc->gfx.requested_scale_x / ws,
+                   height / vc->gfx.requested_scale_y / ws);
 }
 
 #endif
@@ -1759,8 +1762,11 @@ static gboolean gd_configure(GtkWidget *widget,
                              GdkEventConfigure *cfg, gpointer opaque)
 {
     VirtualConsole *vc = opaque;
-
-    gd_set_ui_size(vc, cfg->width, cfg->height);
+    GdkWindow *window = gtk_widget_get_window(vc->gfx.drawing_area);
+    int ws = gdk_window_get_scale_factor(window);
+    gd_set_ui_size(vc,
+                   cfg->width / vc->gfx.requested_scale_x / ws,
+                   cfg->height / vc->gfx.requested_scale_y / ws);
     return FALSE;
 }
 
