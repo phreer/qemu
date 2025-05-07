@@ -1543,8 +1543,8 @@ static void gd_menu_zoom_fixed(GtkMenuItem *item, void *opaque)
     GtkDisplayState *s = opaque;
     VirtualConsole *vc = gd_vc_find_current(s);
 
-    vc->gfx.scale_x = 1.0;
-    vc->gfx.scale_y = 1.0;
+    vc->gfx.scale_x = vc->gfx.preferred_scale;
+    vc->gfx.scale_y = vc->gfx.preferred_scale;
 
     gd_update_windowsize(vc);
 }
@@ -2151,6 +2151,7 @@ static GSList *gd_vc_gfx_init(GtkDisplayState *s, VirtualConsole *vc,
 
     vc->label = qemu_console_get_label(con);
     vc->s = s;
+    vc->gfx.preferred_scale = 1.0;
     vc->gfx.scale_x = 1.0;
     vc->gfx.scale_y = 1.0;
 
