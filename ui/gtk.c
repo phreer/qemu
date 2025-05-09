@@ -832,6 +832,9 @@ static gboolean gd_draw_event(GtkWidget *widget, cairo_t *cr, void *opaque)
     int mx, my;
     int ww, wh;
     int fbw, fbh;
+    double sx, sy;
+    GdkWindow *window = gtk_widget_get_window(widget);
+    int ws = gdk_window_get_scale_factor(window);
 
 #if defined(CONFIG_OPENGL)
     if (vc->gfx.gls) {
@@ -867,11 +870,13 @@ static gboolean gd_draw_event(GtkWidget *widget, cairo_t *cr, void *opaque)
     ww = gdk_window_get_width(gtk_widget_get_window(widget));
     wh = gdk_window_get_height(gtk_widget_get_window(widget));
 
-    vc->gfx.scale_x = (double)ww / fbw;
-    vc->gfx.scale_y = (double)wh / fbh;
+    sx = (double)ww / fbw / ws;
+    sy = (double)wh / fbh / ws;
 
-    fbw *= vc->gfx.scale_x;
-    fbh *= vc->gfx.scale_y;
+    vc->gfx.scale_x = vc->gfx.scale_y = MIN(sx, sy);
+
+    fbw *= vc->gfx.scale_x * ws;
+    fbh *= vc->gfx.scale_y * ws;
 
     mx = my = 0;
     if (ww > fbw) {
@@ -892,9 +897,9 @@ static gboolean gd_draw_event(GtkWidget *widget, cairo_t *cr, void *opaque)
                     -1 * fbw, fbh);
     cairo_fill(cr);
 
-    cairo_scale(cr, vc->gfx.scale_x, vc->gfx.scale_y);
+    cairo_scale(cr, vc->gfx.scale_x * ws, vc->gfx.scale_y * ws);
     cairo_set_source_surface(cr, vc->gfx.surface,
-                             mx / vc->gfx.scale_x, my / vc->gfx.scale_y);
+                             mx / vc->gfx.scale_x / ws, my / vc->gfx.scale_y / ws);
     cairo_paint(cr);
 
     return TRUE;
@@ -909,13 +914,15 @@ static gboolean gd_motion_event(GtkWidget *widget, GdkEventMotion *motion,
     int mx, my;
     int fbh, fbw;
     int ww, wh;
+    GdkWindow *window = gtk_widget_get_window(widget);
+    int ws = gdk_window_get_scale_factor(window);
 
     if (!vc->gfx.ds) {
         return TRUE;
     }
 
-    fbw = surface_width(vc->gfx.ds) * vc->gfx.scale_x;
-    fbh = surface_height(vc->gfx.ds) * vc->gfx.scale_y;
+    fbw = surface_width(vc->gfx.ds) * vc->gfx.scale_x * ws;
+    fbh = surface_height(vc->gfx.ds) * vc->gfx.scale_y * ws;
     ww = gtk_widget_get_allocated_width(widget);
     wh = gtk_widget_get_allocated_height(widget);
 
@@ -937,8 +944,8 @@ static gboolean gd_motion_event(GtkWidget *widget, GdkEventMotion *motion,
      * `motion` is reported in `widget` coordinates
      * so translating it to the coordinates in `vc`.
      */
-    x = (motion->x - mx) / vc->gfx.scale_x;
-    y = (motion->y - my) / vc->gfx.scale_y;
+    x = (motion->x - mx) / vc->gfx.scale_x / ws;
+    y = (motion->y - my) / vc->gfx.scale_y / ws;
 
     trace_gd_motion_event(ww, wh, gtk_widget_get_scale_factor(widget), x, y);
 
@@ -1787,15 +1794,11 @@ static gboolean gd_configure(GtkWidget *widget,
     ww = gdk_window_get_width(window);
     wh = gdk_window_get_height(window);
 
-    if (s->full_screen) {
-        vc->gfx.requested_scale_x = (double)ww / fbw / ws;
-        vc->gfx.requested_scale_y = (double)wh / fbh / ws;
-    } else if (s->free_scale) {
+    if (s->free_scale || s->full_screen) {
         double sx, sy;
 
         sx = (double)ww / fbw / ws;
         sy = (double)wh / fbh / ws;
-        printf("configure: ww=%d,wh=%d,fbw=%d,fbh=%d\n", ww, wh, fbw, fbh);
         vc->gfx.requested_scale_x = vc->gfx.requested_scale_y = MIN(sx, sy);
     }
 
