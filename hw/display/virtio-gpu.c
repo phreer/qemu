@@ -615,6 +615,7 @@ static bool virtio_gpu_do_set_scanout(VirtIOGPU *g,
 
     scanout = &g->parent_obj.scanout[scanout_id];
 
+    printf("%s: rw=%d,rh=%d,fw=%d,fh=%d\n", __func__, r->width, r->height, fb->width, fb->height);
     if (r->x > fb->width ||
         r->y > fb->height ||
         r->width < 16 ||

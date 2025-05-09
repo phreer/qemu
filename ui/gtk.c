@@ -1771,7 +1771,14 @@ static gboolean gd_configure(GtkWidget *widget,
                    cfg->width / vc->gfx.requested_scale_x / ws,
                    cfg->height / vc->gfx.requested_scale_y / ws);
 
-    printf("configure event set ui size w=%d,h=%d\n", (int) (cfg->width / vc->gfx.scale_x / 2), (int) (cfg->height / vc->gfx.scale_y / 2));
+    printf("configure event set ui size w=%d,h=%d, factor=%d, "
+           "cw=%d,ch=%d, scale_x=%lf,scale_y=%lf, rx=%lf,ry=%lf\n",
+        (int) (cfg->width / vc->gfx.requested_scale_x / ws),
+        (int) (cfg->height / vc->gfx.requested_scale_y / ws),
+        ws,
+        cfg->width, cfg->height,
+        vc->gfx.scale_x, vc->gfx.scale_y,
+        vc->gfx.requested_scale_x, vc->gfx.requested_scale_y);
 
     return FALSE;
 }
