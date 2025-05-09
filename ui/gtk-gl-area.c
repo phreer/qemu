@@ -45,6 +45,7 @@ void gd_gl_area_draw(VirtualConsole *vc)
     int fbw, fbh;
     int ww, wh, ws, y1, y2;
     double sx, sy;
+    int mx, my;
 
     if (!vc->gfx.gls) {
         return;
@@ -60,9 +61,19 @@ void gd_gl_area_draw(VirtualConsole *vc)
 
     sx = (double)ww / fbw / ws;
     sy = (double)wh / fbh / ws;
-    vc->gfx.scale_x = sx;
-    vc->gfx.scale_y = sy;
+    vc->gfx.scale_x = vc->gfx.scale_y = MIN(sx, sy);
     printf("scale: %lf\n", vc->gfx.scale_x);
+
+    fbw *= vc->gfx.scale_x * ws;
+    fbh *= vc->gfx.scale_y * ws;
+
+    mx = my = 0;
+    if (ww > fbw) {
+        mx = (ww - fbw) / 2;
+    }
+    if (wh > fbh) {
+        my = (wh - fbh) / 2;
+    }
 
     if (vc->gfx.scanout_mode) {
         if (!vc->gfx.guest_fb.framebuffer) {
@@ -81,12 +92,29 @@ void gd_gl_area_draw(VirtualConsole *vc)
 
         glBindFramebuffer(GL_READ_FRAMEBUFFER, vc->gfx.guest_fb.framebuffer);
         /* GtkGLArea sets GL_DRAW_FRAMEBUFFER for us */
+        glClearColor(0.f, 0.f, 0.f, 0.f);
 
+        if (mx > 0) {
+            glEnable(GL_SCISSOR_TEST);
+            glScissor(0, 0, mx * ws, wh * ws);
+            glClear(GL_COLOR_BUFFER_BIT);
+            glScissor((ww - mx) * ws, 0, mx * ws, wh * ws);
+            glClear(GL_COLOR_BUFFER_BIT);
+            glDisable(GL_SCISSOR_TEST);
+        }
+        if (my > 0) {
+            glEnable(GL_SCISSOR_TEST);
+            glScissor(0, 0, ww * ws, my * ws);
+            glClear(GL_COLOR_BUFFER_BIT);
+            glScissor(0, (wh - my) * ws, ww * ws, my * ws);
+            glClear(GL_COLOR_BUFFER_BIT);
+            glDisable(GL_SCISSOR_TEST);
+        }
         glViewport(0, 0, ww * ws, wh * ws);
         y1 = vc->gfx.y0_top ? 0 : vc->gfx.h;
         y2 = vc->gfx.y0_top ? vc->gfx.h : 0;
         glBlitFramebuffer(0, y1, vc->gfx.w, y2,
-                          0, 0, ww * ws, wh * ws,
+                          mx * ws, my * ws, (ww - mx) * ws, (wh - my) * ws,
                           GL_COLOR_BUFFER_BIT, GL_NEAREST);
 #ifdef CONFIG_GBM
         if (dmabuf) {
