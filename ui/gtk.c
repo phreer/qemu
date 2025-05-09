@@ -771,8 +771,28 @@ static void gd_resize_event(GtkGLArea *area,
                             gint width, gint height, gpointer *opaque)
 {
     VirtualConsole *vc = (void *)opaque;
+    GtkDisplayState *s = vc->s;
     GdkWindow *window = gtk_widget_get_window(vc->gfx.drawing_area);
     int ws = gdk_window_get_scale_factor(window);
+    int ww, wh;
+    int fbw, fbh;
+
+    fbw = surface_width(vc->gfx.ds);
+    fbh = surface_height(vc->gfx.ds);
+    ww = gdk_window_get_width(window);
+    wh = gdk_window_get_height(window);
+
+    if (s->full_screen) {
+        vc->gfx.requested_scale_x = (double)ww / fbw / ws;
+        vc->gfx.requested_scale_y = (double)wh / fbh / ws;
+    } else if (s->free_scale) {
+        double sx, sy;
+
+        sx = (double)ww / fbw / ws;
+        sy = (double)wh / fbh / ws;
+        vc->gfx.requested_scale_x = vc->gfx.requested_scale_y = MIN(sx, sy);
+    }
+
     gd_set_ui_size(vc,
                    width / vc->gfx.requested_scale_x / ws,
                    height / vc->gfx.requested_scale_y / ws);
@@ -847,17 +867,8 @@ static gboolean gd_draw_event(GtkWidget *widget, cairo_t *cr, void *opaque)
     ww = gdk_window_get_width(gtk_widget_get_window(widget));
     wh = gdk_window_get_height(gtk_widget_get_window(widget));
 
-    if (s->full_screen) {
-        vc->gfx.scale_x = (double)ww / fbw;
-        vc->gfx.scale_y = (double)wh / fbh;
-    } else if (s->free_scale) {
-        double sx, sy;
-
-        sx = (double)ww / fbw;
-        sy = (double)wh / fbh;
-
-        vc->gfx.scale_x = vc->gfx.scale_y = MIN(sx, sy);
-    }
+    vc->gfx.scale_x = (double)ww / fbw;
+    vc->gfx.scale_y = (double)wh / fbh;
 
     fbw *= vc->gfx.scale_x;
     fbh *= vc->gfx.scale_y;
@@ -1765,8 +1776,29 @@ static gboolean gd_configure(GtkWidget *widget,
                              GdkEventConfigure *cfg, gpointer opaque)
 {
     VirtualConsole *vc = opaque;
-    GdkWindow *window = gtk_widget_get_window(vc->gfx.drawing_area);
+    GtkDisplayState *s = vc->s;
+    GdkWindow *window = gtk_widget_get_window(widget);
     int ws = gdk_window_get_scale_factor(window);
+    int ww, wh;
+    int fbw, fbh;
+
+    fbw = surface_width(vc->gfx.ds);
+    fbh = surface_height(vc->gfx.ds);
+    ww = gdk_window_get_width(window);
+    wh = gdk_window_get_height(window);
+
+    if (s->full_screen) {
+        vc->gfx.requested_scale_x = (double)ww / fbw / ws;
+        vc->gfx.requested_scale_y = (double)wh / fbh / ws;
+    } else if (s->free_scale) {
+        double sx, sy;
+
+        sx = (double)ww / fbw / ws;
+        sy = (double)wh / fbh / ws;
+        printf("configure: ww=%d,wh=%d,fbw=%d,fbh=%d\n", ww, wh, fbw, fbh);
+        vc->gfx.requested_scale_x = vc->gfx.requested_scale_y = MIN(sx, sy);
+    }
+
     gd_set_ui_size(vc,
                    cfg->width / vc->gfx.requested_scale_x / ws,
                    cfg->height / vc->gfx.requested_scale_y / ws);
